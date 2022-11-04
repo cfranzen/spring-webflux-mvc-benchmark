@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Random;
@@ -16,13 +17,19 @@ public class ReactiveController {
 
     @GetMapping
     public Flux<String> generateRandomNumbers(@RequestParam int numberCount, @RequestParam int delayMillis) {
-        return Flux.create((FluxSink<String> sink) -> {
-                    Random rand = new Random(numberCount);
-                    for (int i = 0; i < numberCount; i++) {
-                        sink.next(rand.nextInt() + "\n");
+        Random rand = new Random(numberCount);
+        return Flux.concat(
+                Mono.delay(Duration.ofMillis(delayMillis))
+                        .thenReturn(nextElement(rand)),
+                Flux.create((FluxSink<String> sink) -> {
+                    for (int i = 1; i < numberCount; i++) {
+                        sink.next(nextElement(rand));
                     }
                     sink.complete();
-                })
-                .delayElements(Duration.ofMillis(delayMillis));
+                }));
+    }
+
+    private String nextElement(final Random rand) {
+        return rand.nextInt() + "\n";
     }
 }

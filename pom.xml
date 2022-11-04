@@ -6,7 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.7.4</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
     <groupId>de.cfranzen</groupId>
     <artifactId>spring-webflux-mvc-benchmark</artifactId>
@@ -45,7 +45,7 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-resolver-dns-native-macos</artifactId>
             <classifier>osx-aarch_64</classifier>
-            <version>4.1.82.Final</version>
+            <version>4.1.84.Final</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -55,7 +55,24 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-image</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
+                    <image>
+                        <name>ghcr.io/cfranzen/spring-webflux-mvc-benchmark/benchmark-backend:${project.version}</name>
+                        <publish>true</publish>
+                    </image>
+                    <docker>
+                        <publishRegistry>
+                            <username>cfranzen</username>
+                            <password>${env.GITHUB_TOKEN}</password>
+                        </publishRegistry>
+                    </docker>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
