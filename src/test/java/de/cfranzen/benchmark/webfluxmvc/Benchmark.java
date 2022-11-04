@@ -26,24 +26,21 @@ class Benchmark {
     }
 
     private void performMeasurements(final int parallelism, final int measurementIterations) {
-        ExecutorService executorService = Executors.newFixedThreadPool(parallelism);
-        LongSupplier blockingCall = () -> callBlockingController(10, 1000);
-        LongSupplier reactiveCall = () -> callReactiveController(10, 1000);
-
+        final ExecutorService executorService = Executors.newFixedThreadPool(parallelism);
+        final LongSupplier blockingCall = () -> callBlockingController(10, 1000);
+        final LongSupplier reactiveCall = () -> callReactiveController(10, 1000);
+        final int[] requestCounts = {parallelism, 2 * parallelism, 4 * parallelism, 8 * parallelism,
+                16 * parallelism, 32 * parallelism};
         try {
             System.out.println("Blocking:");
-            performMeasurement(executorService, parallelism, measurementIterations, parallelism, blockingCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 2 * parallelism, blockingCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 4 * parallelism, blockingCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 8 * parallelism, blockingCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 16 * parallelism, blockingCall);
+            for (int requestCount : requestCounts) {
+                performMeasurement(executorService, parallelism, measurementIterations, requestCount, blockingCall);
+            }
 
             System.out.println("Reactive:");
-            performMeasurement(executorService, parallelism, measurementIterations, parallelism, reactiveCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 2 * parallelism, reactiveCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 4 * parallelism, reactiveCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 8 * parallelism, reactiveCall);
-            performMeasurement(executorService, parallelism, measurementIterations, 16 * parallelism, reactiveCall);
+            for (int requestCount : requestCounts) {
+                performMeasurement(executorService, parallelism, measurementIterations, requestCount, reactiveCall);
+            }
         } finally {
             executorService.shutdown();
         }
