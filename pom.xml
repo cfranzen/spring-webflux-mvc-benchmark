@@ -65,7 +65,7 @@
                 </executions>
                 <configuration>
                     <image>
-                        <name>ghcr.io/cfranzen/spring-webflux-mvc-benchmark/benchmark-backend:${project.version}</name>
+                        <name>ghcr.io/cfranzen/spring-webflux-mvc-benchmark/benchmark-backend</name>
                         <publish>true</publish>
                     </image>
                     <docker>
