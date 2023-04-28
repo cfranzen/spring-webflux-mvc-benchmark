@@ -1,7 +1,11 @@
 package de.cfranzen.benchmark.webfluxmvc;
 
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -14,15 +18,24 @@ import java.util.function.Supplier;
 
 class Benchmark {
 
+    private static final int PARALLELISM = 256;
+
+    private final HttpClient httpClient = HttpClient.create(
+            ConnectionProvider.builder("myConnectionProvider")
+                    .maxConnections(PARALLELISM)
+                    .pendingAcquireTimeout(Duration.ofSeconds(1))
+                    .build());
+
     private final WebClient client = WebClient
             .builder()
-            .baseUrl("http://localhost:8080")
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .baseUrl("http://spring-webflux-mvc-benchmark.fly.dev/")
             .build();
 
     public static void main(final String[] args) {
         Benchmark benchmark = new Benchmark();
         benchmark.performWarmUp();
-        benchmark.performMeasurements(256, 1);
+        benchmark.performMeasurements(PARALLELISM, 1);
     }
 
     private void performMeasurements(final int parallelism, final int measurementIterations) {

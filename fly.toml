@@ -1,0 +1,38 @@
+# fly.toml app configuration file generated for spring-webflux-mvc-benchmark on 2023-04-28T09:27:42+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "spring-webflux-mvc-benchmark"
+primary_region = "ams"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[experimental]
+  auto_rollback = true
+
+[env]
+  PRIMARY_REGION = "ams"
+
+[build]
+  image = "ghcr.io/cfranzen/spring-webflux-mvc-benchmark/benchmark-backend:latest"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 300
+    soft_limit = 270
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "1s"
+    restart_limit = 0
