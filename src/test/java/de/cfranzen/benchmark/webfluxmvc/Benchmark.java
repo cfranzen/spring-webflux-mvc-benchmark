@@ -5,8 +5,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +19,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
+
+import static java.util.stream.Collectors.joining;
 
 class Benchmark {
 
@@ -35,35 +41,41 @@ class Benchmark {
     public static void main(final String[] args) {
         Benchmark benchmark = new Benchmark();
         benchmark.performWarmUp();
-        benchmark.performMeasurements(PARALLELISM, 1);
+        final BenchmarkResult<Integer, Double> result = benchmark.performMeasurements(PARALLELISM);
+        writeResultToCsv("benchmark.csv", result);
     }
 
-    private void performMeasurements(final int parallelism, final int measurementIterations) {
+    private BenchmarkResult<Integer, Double> performMeasurements(final int parallelism) {
         final ExecutorService executorService = Executors.newFixedThreadPool(parallelism);
         final LongSupplier blockingCall = () -> callBlockingController(10, 1000);
         final LongSupplier reactiveCall = () -> callReactiveController(10, 1000);
-        final int[] requestCounts = {parallelism, 2 * parallelism, 4 * parallelism, 8 * parallelism,
-                16 * parallelism, 32 * parallelism};
+
+        final int[] multipliers = {1, 2, 4, 8, 16, 32, 64, 128};
+        final int[] requestCounts = Arrays.stream(multipliers).map(m -> m * parallelism).toArray();
+
+        BenchmarkResult<Integer, Double> result = new BenchmarkResult<>(parallelism, "RequestCount");
         try {
             System.out.println("Blocking:");
             for (int requestCount : requestCounts) {
-                performMeasurement(executorService, parallelism, measurementIterations, requestCount, blockingCall);
+                final double avgRequestsPerSecond = performMeasurement(executorService, parallelism, requestCount, blockingCall);
+                result.addMeasurement("blocking", requestCount, avgRequestsPerSecond);
             }
 
             System.out.println("Reactive:");
             for (int requestCount : requestCounts) {
-                performMeasurement(executorService, parallelism, measurementIterations, requestCount, reactiveCall);
+                final double avgRequestsPerSecond = performMeasurement(executorService, parallelism, requestCount, reactiveCall);
+                result.addMeasurement("reactive", requestCount, avgRequestsPerSecond);
             }
         } finally {
             executorService.shutdown();
         }
+        return result;
     }
 
-    private void performMeasurement(final ExecutorService executorService,
-                                    final int parallelism,
-                                    final int measurementIterations,
-                                    final int requestCount,
-                                    final LongSupplier supplier) {
+    private double performMeasurement(final ExecutorService executorService,
+                                      final int parallelism,
+                                      final int requestCount,
+                                      final LongSupplier supplier) {
         final Supplier<Long> measurementTask = () -> {
             long start = System.nanoTime();
             supplier.getAsLong();
@@ -72,22 +84,20 @@ class Benchmark {
         };
 
         final long benchmarkStart = System.nanoTime();
-        final long[] requestTimeSums = new long[measurementIterations];
-        for (int i = 0; i < measurementIterations; i++) {
-            final CompletableFuture<Long>[] futures = new CompletableFuture[requestCount];
-            for (int j = 0; j < requestCount; j++) {
-                futures[j] = CompletableFuture.supplyAsync(measurementTask, executorService);
-            }
-            CompletableFuture.allOf(futures).join();
-            requestTimeSums[i] = Arrays.stream(futures).mapToLong(f -> f.join()).sum();
+
+        final CompletableFuture<Long>[] futures = new CompletableFuture[requestCount];
+        for (int j = 0; j < requestCount; j++) {
+            futures[j] = CompletableFuture.supplyAsync(measurementTask, executorService);
         }
+        CompletableFuture.allOf(futures).join();
+
         final long benchmarkEnd = System.nanoTime();
         final long benchmarkDuration = benchmarkEnd - benchmarkStart;
 
-        final double avgRequestTimeSum = Arrays.stream(requestTimeSums).average().orElse(0.0);
         final double avgRequestsPerSecond = (double) requestCount / benchmarkDuration * 1e9;
         System.out.println("Measurement: parallelism=" + parallelism + ", requestCount="
                 + requestCount + ", avgRequestsPerSecond=" + avgRequestsPerSecond);
+        return avgRequestsPerSecond;
     }
 
     private void performWarmUp() {
@@ -97,9 +107,8 @@ class Benchmark {
     }
 
     private void performWarmUp(final int iterations, final LongSupplier supplier) {
-        final List<Long> durations = new ArrayList<>(iterations);
         for (int i = 0; i < iterations; i++) {
-            durations.add(supplier.getAsLong());
+            supplier.getAsLong();
         }
     }
 
@@ -121,7 +130,7 @@ class Benchmark {
                         .bodyToMono(String.class)
                         .block()
                         .split("\n"))
-                .mapToInt(s -> Integer.valueOf(s).intValue())
+                .mapToInt(Integer::valueOf)
                 .toArray();
         long end = System.nanoTime();
         long duration = TimeUnit.NANOSECONDS.toMillis(end - start);
@@ -135,5 +144,26 @@ class Benchmark {
                     "result but found " + result.length);
         }
         return duration;
+    }
+
+    private static void writeResultToCsv(final String filename, final BenchmarkResult<Integer, Double> result) {
+        final Path csvFile = Paths.get("src/test/resources", filename);
+        try (final BufferedWriter writer = Files.newBufferedWriter(csvFile)) {
+            final String rowIndexName = result.getRowIndexName();
+            final List<String> columnNames = result.getColumnNames();
+            final List<Integer> rowIndex = result.getRowIndex();
+
+            writer.append(rowIndexName).append(";").append(String.join(";", columnNames));
+
+            for (Integer indexValue : rowIndex) {
+                writer.newLine();
+                writer.append(String.valueOf(indexValue))
+                        .append(";")
+                        .append(columnNames.stream().map(c -> String.valueOf(result.getValue(c, indexValue)))
+                                .collect(joining(";")));
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to write CSV file", e);
+        }
     }
 }
