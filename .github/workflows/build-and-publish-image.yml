@@ -6,6 +6,7 @@ on:
 
 jobs:
   build:
+    name: Build and Publish
     runs-on: ubuntu-latest
 
     steps:
@@ -33,7 +34,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
-    - name: Report
+    - name: Report Maven Test Results
       uses: dorny/test-reporter@v1
       if: always()
       with:
@@ -43,7 +44,7 @@ jobs:
         fail-on-error: true
 
     - name: Build and Publish Image
-      run: mvn --batch-mode -DskipTests package
+      run: mvn -Pnative --batch-mode -DskipTests package
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
