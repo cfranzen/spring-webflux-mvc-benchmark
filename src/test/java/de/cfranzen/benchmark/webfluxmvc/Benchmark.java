@@ -53,7 +53,7 @@ class Benchmark {
         final int[] multipliers = {1, 2, 4, 8, 16, 32, 64, 128};
         final int[] requestCounts = Arrays.stream(multipliers).map(m -> m * parallelism).toArray();
 
-        BenchmarkResult<Integer, Double> result = new BenchmarkResult<>(parallelism, "RequestCount");
+        BenchmarkResult<Integer, Double> result = new BenchmarkResult<>(parallelism, "requests");
         try {
             System.out.println("Blocking:");
             for (int requestCount : requestCounts) {
