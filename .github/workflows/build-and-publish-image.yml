@@ -68,8 +68,8 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
 
-    - name: Install flyctl
-      uses: superfly/flyctl-actions/setup-flyctl@master
+    #- name: Install flyctl
+    #  uses: superfly/flyctl-actions/setup-flyctl@master
 
-    - name: Deploy to fly.io
-      run: flyctl deploy
+    #- name: Deploy to fly.io
+    #  run: flyctl deploy
