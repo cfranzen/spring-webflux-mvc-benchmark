@@ -14,7 +14,7 @@
     <name>spring-webflux-mvc-benchmark</name>
     <description>Performance benchmark comparing Spring Webflux with Spring Mvc</description>
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
     </properties>
     <dependencies>
         <dependency>
