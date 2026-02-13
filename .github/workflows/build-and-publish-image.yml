@@ -31,7 +31,6 @@ jobs:
         version: 'latest'
         java-version: '25'
         distribution: 'graalvm'
-        components: 'native-image'
         github-token: ${{ github.token }}
 
     - name: Build and Test with Maven
