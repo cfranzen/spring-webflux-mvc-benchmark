@@ -25,11 +25,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Set up GraalVM 17
+    - name: Set up GraalVM 21
       uses: graalvm/setup-graalvm@v1
       with:
         version: 'latest'
-        java-version: '17'
+        java-version: '21'
+        distribution: 'graalvm'
         components: 'native-image'
         github-token: ${{ github.token }}
 
